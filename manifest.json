@@ -1,0 +1,10 @@
+{
+  "name": "مدیریت گیم‌نت",
+  "short_name": "گیم‌نت",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#101522",
+  "theme_color": "#101522",
+  "lang": "fa",
+  "dir": "rtl"
+}

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مدیریت گیم‌نت</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#101522;color:#f5f7fb}
+.container{max-width:1200px;margin:auto;padding:22px}
+header{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:20px}
+h1{margin:0;font-size:28px;color:#fff}
+.subtitle{color:#9ba7bd;margin-top:6px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.stat{background:#182033;border:1px solid #29344b;border-radius:16px;padding:18px}
+.stat span{display:block;color:#9ba7bd;font-size:14px;margin-bottom:8px}
+.stat strong{font-size:25px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+.card{background:#182033;border:1px solid #29344b;border-radius:18px;padding:18px;box-shadow:0 8px 25px #0002}
+.card.active{border-color:#27d17f;box-shadow:0 0 0 1px #27d17f33,0 10px 30px #0003}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.console{font-size:20px;font-weight:bold}
+.status{padding:6px 11px;border-radius:20px;font-size:12px;background:#30394c;color:#c5cedd}
+.active .status{background:#153f2d;color:#45e596}
+.time{font-size:32px;text-align:center;font-variant-numeric:tabular-nums;margin:12px 0;color:#fff}
+.price{text-align:center;font-size:24px;font-weight:bold;color:#ffd166;margin-bottom:18px}
+label{display:block;color:#aeb8ca;font-size:13px;margin-bottom:8px}
+select{width:100%;padding:12px;border-radius:10px;border:1px solid #34415a;background:#101725;color:#fff;font-size:15px}
+.buttons{display:flex;gap:10px;margin-top:14px}
+button{flex:1;border:0;border-radius:10px;padding:12px;font-size:15px;font-weight:bold;cursor:pointer;transition:.2s}
+.start{background:#22c978;color:#07150e}
+.stop{background:#e95757;color:white}
+.reset{background:#303b52;color:#fff}
+button:hover{filter:brightness(1.1);transform:translateY(-1px)}
+button:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.note{margin-top:18px;padding:14px;background:#141b2a;border-radius:12px;color:#aeb8ca;font-size:13px;line-height:1.8}
+@media(max-width:750px){.grid,.stats{grid-template-columns:1fr}.container{padding:12px}h1{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <div>
+    <h1>🎮 مدیریت و حسابداری گیم‌نت</h1>
+    <div class="subtitle">مدیریت ۵ کنسول و محاسبه خودکار هزینه بازی</div>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat"><span>کنسول‌های در حال بازی</span><strong id="activeCount">۰</strong></div>
+  <div class="stat"><span>درآمد جلسات متوقف‌شده</span><strong id="totalRevenue">۰ تومان</strong></div>
+  <div class="stat"><span>زمان کل بازی‌های فعال</span><strong id="totalTime">۰۰:۰۰:۰۰</strong></div>
+</div>
+
+<div class="grid" id="consoleGrid"></div>
+
+<div class="note">
+  <b>تعرفه:</b> ۱ و ۲ دسته ساعتی ۸۰٬۰۰۰ تومان، ۳ دسته ساعتی ۱۰۰٬۰۰۰ تومان، ۴ دسته ساعتی ۱۲۰٬۰۰۰ تومان.
+  <br>هزینه بر اساس زمان واقعی بازی و به صورت دقیقه‌ای محاسبه می‌شود.
+</div>
+</div>
+
+<script>
+const rates = {1:80000,2:80000,3:100000,4:120000};
+const consoles = Array.from({length:5},(_,i)=>({
+  id:i+1, running:false, start:null, elapsed:0, finalCost:0, controllers:1
+}));
+let revenue=0;
+
+const fa = n => Number(n).toLocaleString('fa-IR');
+const money = n => fa(Math.round(n)) + ' تومان';
+
+function formatTime(ms){
+  let sec=Math.floor(ms/1000);
+  const h=Math.floor(sec/3600); sec%=3600;
+  const m=Math.floor(sec/60); sec%=60;
+  return [h,m,sec].map(x=>String(x).padStart(2,'0')).join(':');
+}
+function cost(c){
+  const ms = c.running ? (Date.now()-c.start) : c.elapsed;
+  return (ms/3600000)*rates[c.controllers];
+}
+function render(){
+  const grid=document.getElementById('consoleGrid');
+  grid.innerHTML=consoles.map(c=>`
+    <div class="card ${c.running?'active':''}">
+      <div class="card-head">
+        <div class="console">🎮 کنسول ${fa(c.id)}</div>
+        <div class="status">${c.running?'● در حال بازی':'آماده'}</div>
+      </div>
+      <label>تعداد دسته</label>
+      <select id="ctrl-${c.id}" onchange="changeControllers(${c.id},this.value)" ${c.running?'disabled':''}>
+        ${[1,2,3,4].map(x=>`<option value="${x}" ${c.controllers==x?'selected':''}>${fa(x)} دسته — ${money(rates[x])} / ساعت</option>`).join('')}
+      </select>
+      <div class="time">${formatTime(c.running?Date.now()-c.start:c.elapsed)}</div>
+      <div class="price">${money(c.running?cost(c):c.finalCost)}</div>
+      <div class="buttons">
+        <button class="start" onclick="startConsole(${c.id})" ${c.running?'disabled':''}>▶ شروع</button>
+        <button class="stop" onclick="stopConsole(${c.id})" ${!c.running?'disabled':''}>⏸ توقف</button>
+        <button class="reset" onclick="resetConsole(${c.id})">↺ جدید</button>
+      </div>
+    </div>
+  `).join('');
+  updateStats();
+}
+function changeControllers(id,val){
+  const c=consoles.find(x=>x.id===id);
+  c.controllers=Number(val);
+  render();
+}
+function startConsole(id){
+  const c=consoles.find(x=>x.id===id);
+  if(c.running)return;
+  c.elapsed=0;c.finalCost=0;c.start=Date.now();c.running=true;
+  render();
+}
+function stopConsole(id){
+  const c=consoles.find(x=>x.id===id);
+  if(!c.running)return;
+  c.elapsed=Date.now()-c.start;
+  c.finalCost=cost(c);
+  c.running=false;c.start=null;
+  revenue+=c.finalCost;
+  render();
+}
+function resetConsole(id){
+  const c=consoles.find(x=>x.id===id);
+  if(c.running){
+    if(!confirm('این کنسول در حال بازی است. جلسه فعلی متوقف و پاک شود؟'))return;
+  }
+  c.running=false;c.start=null;c.elapsed=0;c.finalCost=0;c.controllers=1;
+  render();
+}
+function updateStats(){
+  document.getElementById('activeCount').textContent=fa(consoles.filter(c=>c.running).length);
+  document.getElementById('totalRevenue').textContent=money(revenue);
+  const total=consoles.filter(c=>c.running).reduce((s,c)=>s+Date.now()-c.start,0);
+  document.getElementById('totalTime').textContent=formatTime(total);
+}
+function tick(){
+  document.querySelectorAll('.card').forEach((el,i)=>{
+    const c=consoles[i];
+    if(c.running){
+      const t=el.querySelector('.time');
+      const p=el.querySelector('.price');
+      if(t)t.textContent=formatTime(Date.now()-c.start);
+      if(p)p.textContent=money(cost(c));
+    }
+  });
+  updateStats();
+}
+render();
+setInterval(tick,1000);
+</script>
+</body>
+</html>
